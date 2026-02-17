@@ -1,0 +1,43 @@
+# System Files
+.DS_Store
+Thumbs.db
+*.log
+
+# IDE Files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Configuration with sensitive data
+config/database.php
+
+# Dependency Directories (if you added them later)
+/vendor/
+/node_modules/
+
+# User Uploads (Keep the folders, ignore the content)
+assets/uploads/*
+!assets/uploads/.gitkeep
+!assets/uploads/index.html
+!assets/uploads/index.php
+
+# Ignore sub-folders content but keep folders
+assets/uploads/certificates/*
+!assets/uploads/certificates/.gitkeep
+
+assets/uploads/trainings/*
+!assets/uploads/trainings/.gitkeep
+
+assets/uploads/student_certificates/*
+!assets/uploads/student_certificates/.gitkeep
+
+assets/uploads/profiles/*
+!assets/uploads/profiles/.gitkeep
+
+assets/uploads/flyers/*
+!assets/uploads/flyers/.gitkeep
+
+# Backup Files
+*.bak
+*.swp
