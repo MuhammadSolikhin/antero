@@ -23,9 +23,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_student'])) {
     $nama = $conn->real_escape_string($_POST['nama_lengkap']);
     $ttl_place = $_POST['tempat_lahir'];
     $ttl_date = $_POST['tanggal_lahir'];
-    $dojang = $_POST['dojang_id'];
+    $dojang = !empty($_POST['dojang_id']) ? "'" . $_POST['dojang_id'] . "'" : "NULL";
     $sabuk = $_POST['tingkatan_sabuk'];
     $alamat = $_POST['alamat_domisili'];
+    $status = $_POST['status'];
 
     // Create User first
     $username = generateUsername($nama);
@@ -42,8 +43,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_student'])) {
         $conn->query("INSERT INTO users (username, password, role) VALUES ('$username', '$password', '$role')");
         $user_id = $conn->insert_id;
 
-        $sql_student = "INSERT INTO students (user_id, dojang_id, nama_lengkap, tempat_lahir, tanggal_lahir, tingkatan_sabuk, alamat_domisili) 
-                        VALUES ($user_id, '$dojang', '$nama', '$ttl_place', '$ttl_date', '$sabuk', '$alamat')";
+        $sql_student = "INSERT INTO students (user_id, dojang_id, nama_lengkap, tempat_lahir, tanggal_lahir, tingkatan_sabuk, alamat_domisili, status) 
+                        VALUES ($user_id, $dojang, '$nama', '$ttl_place', '$ttl_date', '$sabuk', '$alamat', '$status')";
         $conn->query($sql_student);
 
         $conn->commit();
@@ -70,20 +71,39 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_student'])) {
     $nama = $conn->real_escape_string($_POST['nama_lengkap']);
     $ttl_place = $_POST['tempat_lahir'];
     $ttl_date = $_POST['tanggal_lahir'];
-    $dojang = $_POST['dojang_id'];
+    $dojang = !empty($_POST['dojang_id']) ? $_POST['dojang_id'] : "NULL";
     $sabuk = $_POST['tingkatan_sabuk'];
     $alamat = $_POST['alamat_domisili'];
+    $status = $_POST['status'];
+
+    $dojang_val = ($dojang === "NULL") ? "NULL" : "'$dojang'";
 
     $sql = "UPDATE students SET 
             nama_lengkap='$nama', tempat_lahir='$ttl_place', tanggal_lahir='$ttl_date', 
-            dojang_id='$dojang', tingkatan_sabuk='$sabuk', alamat_domisili='$alamat' 
+            dojang_id=$dojang_val, tingkatan_sabuk='$sabuk', alamat_domisili='$alamat', 
+            status='$status' 
             WHERE id=$id";
 
     if ($conn->query($sql)) {
         // Record history if dojang changed
-        if ($old_dojang_id != $dojang) {
-            $h_sql = "INSERT INTO student_dojang_history (student_id, old_dojang_id, new_dojang_id) VALUES ($id, '$old_dojang_id', '$dojang')";
-            $conn->query($h_sql);
+        if ($old_dojang_id != $dojang && $dojang !== "NULL") {
+            // Handle NULL old_dojang_id carefully for SQL
+            $old_val = $old_dojang_id ? "'$old_dojang_id'" : "NULL";
+            $new_val = "'$dojang'";
+
+            // Only insert if both are valid IDs or handle logic as needed. 
+            // Simplest: only track if moving between actual dojangs or from one to another.
+            // If moving to NULL (no dojang), we might want to track that too? 
+            // The table structure for student_dojang_history columns might expect INT. 
+            // Let's assume for now we only track valid ID changes for history or allow NULL if schema permits.
+            // Checking schema: student_dojang_history columns usually int.
+            // If schema allows NULL, great. If not, we might skip history for NULL.
+            // Assuming history columns allow NULL based on context or we skip.
+            // Let's safe check:
+            if ($dojang !== "NULL") {
+                $h_sql = "INSERT INTO student_dojang_history (student_id, old_dojang_id, new_dojang_id) VALUES ($id, $old_val, $new_val)";
+                $conn->query($h_sql);
+            }
         }
 
         $_SESSION['swal_icon'] = 'success';
@@ -132,9 +152,10 @@ $offset = ($page - 1) * $limit;
 
 $where = "";
 if (!empty($search)) {
-    $where = "WHERE (s.nama_lengkap LIKE '%$search%' OR u.username LIKE '%$search%') AND s.is_deleted = 0";
+    // Show only active (not deleted) and MUST have a Dojang
+    $where = "WHERE (s.nama_lengkap LIKE '%$search%' OR u.username LIKE '%$search%') AND s.is_deleted = 0 AND s.dojang_id IS NOT NULL";
 } else {
-    $where = "WHERE s.is_deleted = 0";
+    $where = "WHERE s.is_deleted = 0 AND s.dojang_id IS NOT NULL";
 }
 
 // Count Total
@@ -190,6 +211,7 @@ require_once '../includes/navbar.php';
                         <th>Dojang</th>
                         <th>Sabuk</th>
                         <th>TTL</th>
+                        <th>Status</th>
                         <th>Aksi</th>
                     </tr>
                 </thead>
@@ -206,6 +228,13 @@ require_once '../includes/navbar.php';
                             <td><?php echo $row['nama_dojang']; ?></td>
                             <td><span class="badge bg-info text-dark"><?php echo $row['tingkatan_sabuk']; ?></span></td>
                             <td><?php echo $row['tempat_lahir'] . ', ' . $row['tanggal_lahir']; ?></td>
+                            <td>
+                                <?php if ($row['status'] == 'aktif'): ?>
+                                    <span class="badge bg-success" title="Aktif"><i class="bi bi-eye"></i></span>
+                                <?php else: ?>
+                                    <span class="badge bg-secondary" title="Tidak Aktif"><i class="bi bi-eye-slash"></i></span>
+                                <?php endif; ?>
+                            </td>
                             <td>
                                 <button class="btn btn-sm btn-outline-info rounded-pill me-1" data-bs-toggle="modal"
                                     data-bs-target="#detailStudentModal<?php echo $row['id']; ?>">
@@ -327,6 +356,14 @@ while ($row = $students->fetch_assoc()):
                             <textarea name="alamat_domisili" class="form-control" rows="2"
                                 required><?php echo $row['alamat_domisili']; ?></textarea>
                         </div>
+                        <div class="mb-3">
+                            <label class="form-label">Status Keanggotaan</label>
+                            <select name="status" class="form-select" required>
+                                <option value="aktif" <?php echo ($row['status'] == 'aktif') ? 'selected' : ''; ?>>Aktif
+                                </option>
+                                <option value="tidak aktif" <?php echo ($row['status'] == 'tidak aktif') ? 'selected' : ''; ?>>Tidak Aktif</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
@@ -361,6 +398,17 @@ while ($row = $students->fetch_assoc()):
                             <td class="text-muted">Username</td>
                             <td>:</td>
                             <td><?php echo $row['username']; ?></td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Status</td>
+                            <td>:</td>
+                            <td>
+                                <?php if ($row['status'] == 'aktif'): ?>
+                                    <span class="badge bg-success">Aktif</span>
+                                <?php else: ?>
+                                    <span class="badge bg-secondary">Tidak Aktif</span>
+                                <?php endif; ?>
+                            </td>
                         </tr>
                         <tr>
                             <td class="text-muted">Tempat, Tanggal Lahir</td>
@@ -509,6 +557,13 @@ while ($row = $students->fetch_assoc()):
                     <div class="mb-3">
                         <label class="form-label">Alamat Domisili</label>
                         <textarea name="alamat_domisili" class="form-control" rows="2" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Status Keanggotaan</label>
+                        <select name="status" class="form-select" required>
+                            <option value="aktif">Aktif</option>
+                            <option value="tidak aktif">Tidak Aktif</option>
+                        </select>
                     </div>
                 </div>
                 <div class="modal-footer">

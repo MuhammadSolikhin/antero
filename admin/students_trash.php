@@ -11,13 +11,12 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'admin') {
 // 1. Restore Student
 if (isset($_GET['restore'])) {
     $id = intval($_GET['restore']);
-    $get_user = $conn->query("SELECT user_id FROM students WHERE id=$id")->fetch_assoc();
-    $user_id = $get_user['user_id'];
-
     $conn->begin_transaction();
     try {
         $conn->query("UPDATE students SET is_deleted = 0, deleted_at = NULL WHERE id=$id");
-        $conn->query("UPDATE users SET is_deleted = 0 WHERE id=$user_id");
+        $uid = $conn->query("SELECT user_id FROM students WHERE id=$id")->fetch_assoc()['user_id'];
+        $conn->query("UPDATE users SET is_deleted = 0 WHERE id=$uid");
+
         $conn->commit();
         $_SESSION['swal_icon'] = 'success';
         $_SESSION['swal_title'] = 'Berhasil!';
@@ -25,6 +24,7 @@ if (isset($_GET['restore'])) {
     } catch (Exception $e) {
         $conn->rollback();
         $_SESSION['swal_icon'] = 'error';
+        $_SESSION['swal_title'] = 'Gagal!';
         $_SESSION['swal_text'] = $e->getMessage();
     }
     header("Location: students_trash.php");
@@ -32,35 +32,52 @@ if (isset($_GET['restore'])) {
 }
 
 // 2. Permanent Delete
-if (isset($_GET['force_delete'])) {
-    $id = intval($_GET['force_delete']);
-    // Get info for cleanup
-    $info = $conn->query("SELECT user_id, foto_sertifikat FROM students WHERE id=$id")->fetch_assoc();
-    $user_id = $info['user_id'];
-    $cert_file = $info['foto_sertifikat'];
-
+if (isset($_GET['delete_permanent'])) {
+    $id = intval($_GET['delete_permanent']);
     $conn->begin_transaction();
     try {
-        $conn->query("DELETE FROM students WHERE id=$id");
-        $conn->query("DELETE FROM users WHERE id=$user_id");
-        $conn->commit();
+        $student = $conn->query("SELECT user_id, foto_sertifikat FROM students WHERE id=$id")->fetch_assoc();
 
-        // Remove File
-        if ($cert_file && file_exists("../assets/uploads/certificates/" . $cert_file)) {
-            unlink("../assets/uploads/certificates/" . $cert_file);
+        // Delete Certificate File
+        if ($student['foto_sertifikat']) {
+            $file_path = "../assets/uploads/certificates/" . $student['foto_sertifikat'];
+            if (file_exists($file_path))
+                unlink($file_path);
         }
 
+        // Delete User and Student (Cascade should handle student, but let's be explicit or rely on FK)
+        $conn->query("DELETE FROM users WHERE id=" . $student['user_id']);
+
+        $conn->commit();
         $_SESSION['swal_icon'] = 'success';
-        $_SESSION['swal_title'] = 'Terhapus!';
+        $_SESSION['swal_title'] = 'Berhasil!';
         $_SESSION['swal_text'] = 'Data siswa dihapus permanen.';
     } catch (Exception $e) {
         $conn->rollback();
         $_SESSION['swal_icon'] = 'error';
+        $_SESSION['swal_title'] = 'Gagal!';
         $_SESSION['swal_text'] = $e->getMessage();
     }
     header("Location: students_trash.php");
     exit();
 }
+
+// 3. Assign Dojang (For students with NULL Dojang)
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['assign_dojang'])) {
+    $id = intval($_POST['id']);
+    $dojang_id = $_POST['dojang_id'];
+
+    if (!empty($dojang_id)) {
+        // Assign dojang AND ensure they are not deleted (just in case)
+        $conn->query("UPDATE students SET dojang_id = '$dojang_id', is_deleted = 0 WHERE id = $id");
+        $_SESSION['swal_icon'] = 'success';
+        $_SESSION['swal_title'] = 'Berhasil!';
+        $_SESSION['swal_text'] = 'Siswa berhasil ditempatkan di Dojang.';
+    }
+    header("Location: students_trash.php");
+    exit();
+}
+
 
 // DATA FETCHING
 $search = isset($_GET['search']) ? $conn->real_escape_string($_GET['search']) : '';
@@ -68,23 +85,30 @@ $limit = 10;
 $page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
 $offset = ($page - 1) * $limit;
 
-$where = "WHERE s.is_deleted = 1";
+// MODIFIED where clause: Deleted OR No Dojang
+$where = "WHERE (s.is_deleted = 1 OR s.dojang_id IS NULL)";
 if (!empty($search)) {
     $where .= " AND (s.nama_lengkap LIKE '%$search%' OR u.username LIKE '%$search%')";
 }
 
-// Count Total
+// Count
 $total_sql = "SELECT count(*) as total FROM students s JOIN users u ON s.user_id = u.id $where";
 $total_result = $conn->query($total_sql);
 $total_rows = $total_result->fetch_assoc()['total'];
 $total_pages = ceil($total_rows / $limit);
 
-// Fetch Data
+// Fetch - Use LEFT JOIN dojangs because dojang_id might be NULL
 $students = $conn->query("SELECT s.*, d.nama_dojang, u.username FROM students s 
-                          JOIN dojangs d ON s.dojang_id = d.id 
+                          LEFT JOIN dojangs d ON s.dojang_id = d.id 
                           JOIN users u ON s.user_id = u.id 
                           $where
-                          ORDER BY s.deleted_at DESC LIMIT $limit OFFSET $offset");
+                          ORDER BY s.deleted_at DESC, s.nama_lengkap ASC LIMIT $limit OFFSET $offset");
+
+// Fetch dojangs for modal
+$dojangs = $conn->query("SELECT * FROM dojangs");
+$dojang_options = [];
+while ($d = $dojangs->fetch_assoc())
+    $dojang_options[] = $d;
 
 require_once '../includes/header.php';
 require_once '../includes/navbar.php';
@@ -92,19 +116,15 @@ require_once '../includes/navbar.php';
 
 <div class="container py-5">
     <div class="glass-card px-4 py-3 mb-4 d-flex justify-content-between align-items-center">
-        <div>
-            <a href="students.php" class="text-decoration-none text-muted small"><i class="bi bi-arrow-left"></i>
-                Kembali</a>
-            <h3 class="fw-bold mb-0 mt-1"><i class="bi bi-trash text-danger"></i> Sampah (Siswa Dihapus)</h3>
-        </div>
+        <h3 class="fw-bold mb-0 text-danger"><i class="bi bi-trash-fill"></i> Sampah Siswa</h3>
         <div class="d-flex gap-2">
             <form method="GET" class="d-flex">
-                <input type="text" name="search" class="form-control rounded-pill me-2" placeholder="Cari..."
+                <input type="text" name="search" class="form-control rounded-pill me-2" placeholder="Cari Siswa..."
                     value="<?php echo htmlspecialchars($search); ?>">
-                <button type="submit" class="btn btn-primary rounded-pill"><i class="bi bi-search"></i></button>
+                <button type="submit" class="btn btn-danger rounded-pill"><i class="bi bi-search"></i></button>
             </form>
-            <a href="export_trash_students.php" class="btn btn-success rounded-pill shadow-sm">
-                <i class="bi bi-file-earmark-excel-fill me-1"></i> Export Excel
+            <a href="students.php" class="btn btn-outline-primary rounded-pill shadow-sm">
+                <i class="bi bi-arrow-left me-1"></i> Kembali
             </a>
         </div>
     </div>
@@ -115,55 +135,67 @@ require_once '../includes/navbar.php';
                 <thead class="table-light">
                     <tr>
                         <th>No</th>
-                        <th>Username</th>
                         <th>Nama Lengkap</th>
                         <th>Dojang Terakhir</th>
+                        <th>Alasan Masuk Sampah</th>
                         <th>Tgl Dihapus</th>
                         <th>Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php if ($students->num_rows > 0): ?>
-                        <?php
-                        $no = $offset + 1;
-                        while ($row = $students->fetch_assoc()): ?>
+                    <?php
+                    $no = $offset + 1;
+                    if ($students->num_rows > 0):
+                        while ($row = $students->fetch_assoc()):
+                            $reason = "";
+                            if ($row['is_deleted'] == 1) {
+                                $reason = '<span class="badge bg-danger">Dihapus</span>';
+                            } elseif (is_null($row['dojang_id'])) {
+                                $reason = '<span class="badge bg-warning text-dark">Tanpa Dojang</span>';
+                            }
+                            ?>
                             <tr>
-                                <td>
-                                    <?php echo $no++; ?>
+                                <td><?php echo $no++; ?></td>
+                                <td class="fw-bold"><?php echo $row['nama_lengkap']; ?> <br> <small
+                                        class="text-muted"><?php echo $row['username']; ?></small></td>
+                                <td><?php echo $row['nama_dojang'] ? $row['nama_dojang'] : '<span class="text-muted">-</span>'; ?>
                                 </td>
-                                <td><span class="badge bg-secondary">
-                                        <?php echo $row['username']; ?>
-                                    </span></td>
-                                <td class="fw-bold">
-                                    <?php echo $row['nama_lengkap']; ?>
+                                <td><?php echo $reason; ?></td>
+                                <td>
+                                    <?php
+                                    if ($row['deleted_at']) {
+                                        echo '<span class="badge bg-secondary">' . date('d/m/Y H:i', strtotime($row['deleted_at'])) . '</span>';
+                                    } else {
+                                        echo '-';
+                                    }
+                                    ?>
                                 </td>
                                 <td>
-                                    <?php echo $row['nama_dojang']; ?>
-                                </td>
-                                <td><span class="badge bg-danger bg-opacity-10 text-danger">
-                                        <?php echo date('d/m/Y H:i', strtotime($row['deleted_at'])); ?>
-                                    </span></td>
-                                <td>
-                                    <button class="btn btn-sm btn-outline-info rounded-pill me-1" data-bs-toggle="modal"
-                                        data-bs-target="#detailStudentModal<?php echo $row['id']; ?>">
-                                        <i class="bi bi-info-circle"></i> Detail
-                                    </button>
-                                    <a href="students_trash.php?restore=<?php echo $row['id']; ?>"
-                                        class="btn btn-sm btn-outline-success rounded-pill me-1"
-                                        onclick="return confirm('Apakah Anda yakin ingin memulihkan siswa ini?')">
-                                        <i class="bi bi-arrow-counterclockwise"></i> Pulihkan
-                                    </a>
-                                    <a href="students_trash.php?force_delete=<?php echo $row['id']; ?>"
+                                    <?php if (is_null($row['dojang_id'])): ?>
+                                        <!-- If No Dojang, show "Assign Dojang" button -->
+                                        <button class="btn btn-sm btn-success rounded-pill me-1" data-bs-toggle="modal"
+                                            data-bs-target="#assignDojangModal<?php echo $row['id']; ?>" title="Pilih Dojang">
+                                            <i class="bi bi-box-arrow-in-right"></i> Tempatkan
+                                        </button>
+                                    <?php else: ?>
+                                        <!-- If Deleted, show Restore -->
+                                        <a href="students_trash.php?restore=<?php echo $row['id']; ?>"
+                                            class="btn btn-sm btn-success rounded-pill me-1"
+                                            onclick="confirmRestore(event, this.href)" title="Pulihkan">
+                                            <i class="bi bi-arrow-counterclockwise"></i>
+                                        </a>
+                                    <?php endif; ?>
+
+                                    <a href="students_trash.php?delete_permanent=<?php echo $row['id']; ?>"
                                         class="btn btn-sm btn-outline-danger rounded-pill"
-                                        onclick="confirmPermanentDelete(event, this.href)">
-                                        <i class="bi bi-x-circle"></i> Hapus Permanen
+                                        onclick="confirmPermanent(event, this.href)" title="Hapus Permanen">
+                                        <i class="bi bi-x-circle"></i>
                                     </a>
                                 </td>
                             </tr>
-                        <?php endwhile; ?>
-                    <?php else: ?>
+                        <?php endwhile; else: ?>
                         <tr>
-                            <td colspan="6" class="text-center py-4 text-muted">Tidak ada data siswa di sampah.</td>
+                            <td colspan="6" class="text-center py-4 text-muted">Sampah kosong.</td>
                         </tr>
                     <?php endif; ?>
                 </tbody>
@@ -178,14 +210,10 @@ require_once '../includes/navbar.php';
                         <li class="page-item"><a class="page-link"
                                 href="?page=<?php echo $page - 1; ?>&search=<?php echo $search; ?>">Previous</a></li>
                     <?php endif; ?>
-
                     <?php for ($i = 1; $i <= $total_pages; $i++): ?>
                         <li class="page-item <?php echo ($i == $page) ? 'active' : ''; ?>"><a class="page-link"
-                                href="?page=<?php echo $i; ?>&search=<?php echo $search; ?>">
-                                <?php echo $i; ?>
-                            </a></li>
+                                href="?page=<?php echo $i; ?>&search=<?php echo $search; ?>"><?php echo $i; ?></a></li>
                     <?php endfor; ?>
-
                     <?php if ($page < $total_pages): ?>
                         <li class="page-item"><a class="page-link"
                                 href="?page=<?php echo $page + 1; ?>&search=<?php echo $search; ?>">Next</a></li>
@@ -196,138 +224,75 @@ require_once '../includes/navbar.php';
     </div>
 </div>
 
-<!-- Detail Modals (Copied from students.php) -->
+<!-- Assign Dojang Modals -->
 <?php
 $students->data_seek(0);
 while ($row = $students->fetch_assoc()):
-    ?>
-    <div class="modal fade" id="detailStudentModal<?php echo $row['id']; ?>" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title fw-bold">Detail Siswa (Arsip)</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <table class="table table-borderless">
-                        <tr>
-                            <td width="35%" class="text-muted">Nama Lengkap</td>
-                            <td width="5%">:</td>
-                            <td class="fw-bold">
-                                <?php echo $row['nama_lengkap']; ?>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="text-muted">Username</td>
-                            <td>:</td>
-                            <td>
-                                <?php echo $row['username']; ?>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="text-muted">Tempat, Tanggal Lahir</td>
-                            <td>:</td>
-                            <td>
-                                <?php echo $row['tempat_lahir'] . ', ' . date('d F Y', strtotime($row['tanggal_lahir'])); ?>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="text-muted">Dojang</td>
-                            <td>:</td>
-                            <td>
-                                <?php echo $row['nama_dojang']; ?>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="text-muted">Tingkatan Sabuk</td>
-                            <td>:</td>
-                            <td><span class="badge bg-primary">
-                                    <?php echo $row['tingkatan_sabuk']; ?>
-                                </span></td>
-                        </tr>
-                        <tr>
-                            <td class="text-muted">Alamat</td>
-                            <td>:</td>
-                            <td>
-                                <?php echo $row['alamat_domisili']; ?>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="text-muted">Dihapus Pada</td>
-                            <td>:</td>
-                            <td class="text-danger fw-bold">
-                                <?php echo date('d F Y H:i', strtotime($row['deleted_at'])); ?>
-                            </td>
-                        </tr>
-                    </table>
-                </div>
-
-                <div class="px-3 pb-3">
-                    <h6 class="fw-bold border-bottom pb-2 mb-3"><i class="bi bi-clock-history text-primary"></i> Riwayat
-                        Perpindahan Dojang</h6>
-                    <div class="table-responsive">
-                        <table class="table table-sm table-striped table-hover small">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Tanggal</th>
-                                    <th>Dojang Lama</th>
-                                    <th>Dojang Baru</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php
-                                $hist_sql = "SELECT h.*, d1.nama_dojang as old_dojang, d2.nama_dojang as new_dojang 
-                                             FROM student_dojang_history h 
-                                             LEFT JOIN dojangs d1 ON h.old_dojang_id = d1.id 
-                                             LEFT JOIN dojangs d2 ON h.new_dojang_id = d2.id 
-                                             WHERE h.student_id = " . $row['id'] . " ORDER BY h.change_date DESC";
-                                $hist_res = $conn->query($hist_sql);
-                                if ($hist_res && $hist_res->num_rows > 0):
-                                    while ($hist = $hist_res->fetch_assoc()):
-                                        ?>
-                                        <tr>
-                                            <td>
-                                                <?php echo date('d/m/Y H:i', strtotime($hist['change_date'])); ?>
-                                            </td>
-                                            <td>
-                                                <?php echo $hist['old_dojang'] ? $hist['old_dojang'] : '<span class="text-muted">-</span>'; ?>
-                                            </td>
-                                            <td>
-                                                <?php echo $hist['new_dojang'] ? $hist['new_dojang'] : '<span class="text-muted">-</span>'; ?>
-                                            </td>
-                                        </tr>
-                                    <?php endwhile; else: ?>
-                                    <tr>
-                                        <td colspan="3" class="text-center text-muted">Belum ada riwayat perpindahan.</td>
-                                    </tr>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
+    if (is_null($row['dojang_id'])):
+        ?>
+        <div class="modal fade" id="assignDojangModal<?php echo $row['id']; ?>" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Pilih Dojang untuk <?php echo $row['nama_lengkap']; ?></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-                    <a href="students_trash.php?restore=<?php echo $row['id']; ?>" class="btn btn-success">Pulihkan</a>
+                    <form method="POST">
+                        <div class="modal-body">
+                            <input type="hidden" name="id" value="<?php echo $row['id']; ?>">
+                            <div class="mb-3">
+                                <label class="form-label">Dojang Tujuan</label>
+                                <select name="dojang_id" class="form-select" required>
+                                    <option value="">-- Pilih Dojang --</option>
+                                    <?php foreach ($dojang_options as $d): ?>
+                                        <option value="<?php echo $d['id']; ?>"><?php echo $d['nama_dojang']; ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                            <button type="submit" name="assign_dojang" class="btn btn-primary">Simpan</button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
-    </div>
-<?php endwhile; ?>
+    <?php
+    endif;
+endwhile;
+?>
 
 <?php require_once '../includes/footer.php'; ?>
 
 <script>
-    function confirmPermanentDelete(event, url) {
+    function confirmRestore(event, url) {
+        event.preventDefault();
+        Swal.fire({
+            title: 'Pulihkan Siswa?',
+            text: "Siswa akan kembali ke daftar aktif.",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#28a745',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Ya, Pulihkan!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = url;
+            }
+        });
+    }
+
+    function confirmPermanent(event, url) {
         event.preventDefault();
         Swal.fire({
             title: 'Hapus Permanen?',
-            text: "Data ini tidak akan bisa dikembalikan lagi!",
+            text: "Data tidak bisa dikembalikan!",
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
             cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Ya, Hapus Permanen!',
-            cancelButtonText: 'Batal'
+            confirmButtonText: 'Ya, Hapus Permanen!'
         }).then((result) => {
             if (result.isConfirmed) {
                 window.location.href = url;

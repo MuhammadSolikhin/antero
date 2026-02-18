@@ -29,21 +29,24 @@ $data = [];
 $columns = [];
 
 if ($type == 'students') {
-    $sql = "SELECT s.nama_lengkap, u.username, d.nama_dojang, s.tingkatan_sabuk, s.tempat_lahir, s.tanggal_lahir, s.alamat_domisili 
+    $sql = "SELECT s.nama_lengkap, u.username, d.nama_dojang, s.tingkatan_sabuk, s.tempat_lahir, s.tanggal_lahir, s.alamat_domisili, s.status 
             FROM students s 
             JOIN users u ON s.user_id = u.id 
-            JOIN dojangs d ON s.dojang_id = d.id 
+            LEFT JOIN dojangs d ON s.dojang_id = d.id 
             ORDER BY s.nama_lengkap ASC";
     $result = $conn->query($sql);
-    $columns = ['Nama Lengkap', 'Username', 'Asal Dojang', 'Sabuk', 'TTL', 'Alamat'];
+    $columns = ['Nama Lengkap', 'Username', 'Asal Dojang', 'Sabuk', 'TTL', 'Alamat', 'Status Keaktifan'];
     while ($row = $result->fetch_assoc()) {
+        $status_label = ($row['status'] == 'aktif') ? 'Aktif' : 'Tidak Aktif';
+        $dojang_name = $row['nama_dojang'] ? $row['nama_dojang'] : '-';
         $data[] = [
             $row['nama_lengkap'],
             $row['username'],
-            $row['nama_dojang'],
+            $dojang_name,
             $row['tingkatan_sabuk'],
             $row['tempat_lahir'] . ', ' . $row['tanggal_lahir'],
-            $row['alamat_domisili']
+            $row['alamat_domisili'],
+            $status_label
         ];
     }
 } elseif ($type == 'achievements') {

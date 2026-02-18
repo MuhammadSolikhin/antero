@@ -105,6 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_student'])) {
     $ttl_date = $_POST['tanggal_lahir'];
     $sabuk = $_POST['tingkatan_sabuk'];
     $alamat = $_POST['alamat_domisili'];
+    $status = $_POST['status']; // Added status
 
     // Check old data for belt and dojang comparison
     $old_data = $conn->query("SELECT tingkatan_sabuk, dojang_id FROM students WHERE id=$id_student")->fetch_assoc();
@@ -136,7 +137,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_student'])) {
             tanggal_lahir='$ttl_date', 
             tingkatan_sabuk='$sabuk', 
             alamat_domisili='$alamat', 
-            dojang_id='$new_dojang_id' 
+            dojang_id='$new_dojang_id',
+            status='$status' 
             $file_update_sql
             WHERE id=$id_student";
 
@@ -233,6 +235,7 @@ $students = $conn->query("SELECT s.*, u.username FROM students s JOIN users u ON
                         <th>TTL</th>
                         <th>Sertifikat</th>
                         <th>Status Akun</th>
+                        <th>Status</th> <!-- Added Status column header -->
                         <th>Aksi</th>
                     </tr>
                 </thead>
@@ -254,6 +257,13 @@ $students = $conn->query("SELECT s.*, u.username FROM students s JOIN users u ON
                                 </td>
                                 <td><span class="badge bg-secondary"><?php echo $row['username']; ?></span></td>
                                 <td>
+                                    <?php if ($row['status'] == 'aktif'): ?>
+                                        <span class="badge bg-success" title="Aktif"><i class="bi bi-eye"></i></span>
+                                    <?php else: ?>
+                                        <span class="badge bg-secondary" title="Tidak Aktif"><i class="bi bi-eye-slash"></i></span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
                                     <button class="btn btn-sm btn-outline-warning rounded-pill me-1" data-bs-toggle="modal"
                                         data-bs-target="#editStudentModal<?php echo $row['id']; ?>">
                                         <i class="bi bi-pencil-square"></i>
@@ -268,7 +278,7 @@ $students = $conn->query("SELECT s.*, u.username FROM students s JOIN users u ON
                         <?php endwhile; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="7" class="text-center py-4 text-muted">Belum ada siswa di Dojang ini.</td>
+                            <td colspan="8" class="text-center py-4 text-muted">Belum ada siswa di Dojang ini.</td>
                         </tr>
                     <?php endif; ?>
                 </tbody>
@@ -339,6 +349,13 @@ $students = $conn->query("SELECT s.*, u.username FROM students s JOIN users u ON
                     <div class="mb-3">
                         <label class="form-label">Alamat Domisili</label>
                         <textarea name="alamat_domisili" class="form-control" rows="2" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Status Keanggotaan</label>
+                        <select name="status" class="form-select" required>
+                            <option value="aktif">Aktif</option>
+                            <option value="tidak aktif">Tidak Aktif</option>
+                        </select>
                     </div>
                 </div>
                 <div class="modal-footer">
