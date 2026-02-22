@@ -234,8 +234,8 @@ $students = $conn->query("SELECT s.*, u.username FROM students s JOIN users u ON
                         <th>Sabuk</th>
                         <th>TTL</th>
                         <th>Sertifikat</th>
-                        <th>Status Akun</th>
-                        <th>Status</th> <!-- Added Status column header -->
+                        <th>Username</th>
+                        <th>Status</th>
                         <th>Aksi</th>
                     </tr>
                 </thead>
@@ -258,9 +258,19 @@ $students = $conn->query("SELECT s.*, u.username FROM students s JOIN users u ON
                                 <td><span class="badge bg-secondary"><?php echo $row['username']; ?></span></td>
                                 <td>
                                     <?php if ($row['status'] == 'aktif'): ?>
-                                        <span class="badge bg-success" title="Aktif"><i class="bi bi-eye"></i></span>
+                                        <span class="badge bg-success cursor-pointer"
+                                            onclick="toggleStatus(<?php echo $row['id']; ?>, 'aktif')"
+                                            id="status-badge-<?php echo $row['id']; ?>" title="Klik untuk menonaktifkan"
+                                            style="cursor: pointer;">
+                                            <i class="bi bi-eye" id="status-icon-<?php echo $row['id']; ?>"></i>
+                                        </span>
                                     <?php else: ?>
-                                        <span class="badge bg-secondary" title="Tidak Aktif"><i class="bi bi-eye-slash"></i></span>
+                                        <span class="badge bg-secondary cursor-pointer"
+                                            onclick="toggleStatus(<?php echo $row['id']; ?>, 'tidak aktif')"
+                                            id="status-badge-<?php echo $row['id']; ?>" title="Klik untuk mengaktifkan"
+                                            style="cursor: pointer;">
+                                            <i class="bi bi-eye-slash" id="status-icon-<?php echo $row['id']; ?>"></i>
+                                        </span>
                                     <?php endif; ?>
                                 </td>
                                 <td>
@@ -617,5 +627,69 @@ while ($row = $students->fetch_assoc()):
                 window.location.href = url;
             }
         });
+    }
+
+    function toggleStatus(id, currentStatus) {
+        // Send AJAX request
+        fetch('ajax_toggle_status.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                id: id,
+                status: currentStatus
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update Badge and Icon based on new status
+                    const badge = document.getElementById(`status-badge-${id}`);
+                    const icon = document.getElementById(`status-icon-${id}`);
+
+                    if (data.new_status === 'aktif') {
+                        badge.classList.remove('bg-secondary');
+                        badge.classList.add('bg-success');
+                        badge.setAttribute('title', 'Klik untuk menonaktifkan');
+                        badge.setAttribute('onclick', `toggleStatus(${id}, 'aktif')`);
+
+                        icon.classList.remove('bi-eye-slash');
+                        icon.classList.add('bi-eye');
+                    } else {
+                        badge.classList.remove('bg-success');
+                        badge.classList.add('bg-secondary');
+                        badge.setAttribute('title', 'Klik untuk mengaktifkan');
+                        badge.setAttribute('onclick', `toggleStatus(${id}, 'tidak aktif')`);
+
+                        icon.classList.remove('bi-eye');
+                        icon.classList.add('bi-eye-slash');
+                    }
+
+                    // Show localized Toast or Swal
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: data.message,
+                        showConfirmButton: false,
+                        timer: 3000
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.message
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Terjadi kesalahan sistem'
+                });
+            });
     }
 </script>

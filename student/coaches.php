@@ -59,6 +59,7 @@ $coaches = $conn->query("SELECT * FROM coaches ORDER BY nama_pelatih ASC");
                                                             <th>Tahun</th>
                                                             <th>Tingkat</th>
                                                             <th>Deskripsi</th>
+                                                            <th>Sertifikat</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
@@ -67,6 +68,15 @@ $coaches = $conn->query("SELECT * FROM coaches ORDER BY nama_pelatih ASC");
                                                                 <td><?php echo $t['year']; ?></td>
                                                                 <td><?php echo $t['level']; ?></td>
                                                                 <td><?php echo $t['description']; ?></td>
+                                                                 <td class="text-center">
+                                                                    <?php if (!empty($t['certificate_file'])): ?>
+                                                                        <a href="../assets/uploads/trainings/<?php echo $t['certificate_file']; ?>" target="_blank" class="btn btn-sm btn-outline-info rounded-pill py-0 px-2">
+                                                                            <i class="bi bi-file-earmark-pdf"></i> Lihat
+                                                                        </a>
+                                                                    <?php else: ?>
+                                                                        <span class="text-muted">-</span>
+                                                                    <?php endif; ?>
+                                                                </td>
                                                             </tr>
                                                         <?php endwhile; ?>
                                                     </tbody>

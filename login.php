@@ -16,6 +16,7 @@ if (isset($_SESSION['user_id'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Prestasi Bela Diri</title>
+    <link rel="icon" type="image/jpeg" href="assets/img/logo.jpeg">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/style.css">
@@ -94,7 +95,8 @@ if (isset($_SESSION['user_id'])) {
         </script>
         <?php unset($_SESSION['swal_icon']);
         unset($_SESSION['swal_title']);
-        unset($_SESSION['swal_text']); endif; ?>
+        unset($_SESSION['swal_text']);
+    endif; ?>
 
 </body>
 
