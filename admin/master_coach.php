@@ -366,17 +366,17 @@ $coaches = $conn->query("SELECT * FROM coaches $where ORDER BY id DESC LIMIT $li
                                 </thead>
                                 <tbody>
                                     <tr>
-                                        <td><input required type="number" name="trainings[0][year]"
+                                        <td><input type="number" name="trainings[0][year]"
                                                 class="form-control form-control-sm" placeholder="2024"></td>
                                         <td>
-                                            <select required name="trainings[0][level]"
+                                            <select name="trainings[0][level]"
                                                 class="form-select form-select-sm">
                                                 <option value="Daerah">Daerah</option>
                                                 <option value="Nasional">Nasional</option>
                                                 <option value="Internasional">Internasional</option>
                                             </select>
                                         </td>
-                                        <td><input required type="text" name="trainings[0][description]"
+                                        <td><input type="text" name="trainings[0][description]"
                                                 class="form-control form-control-sm" placeholder="Nama Pelatihan...">
                                         </td>
                                         <td><input type="file" name="trainings[0][file]"
@@ -492,18 +492,18 @@ while ($row = $coaches->fetch_assoc()):
                                             while ($t = $trainings->fetch_assoc()):
                                                 ?>
                                                 <tr>
-                                                    <td><input required type="number" name="trainings[<?php echo $t_idx; ?>][year]"
+                                                    <td><input type="number" name="trainings[<?php echo $t_idx; ?>][year]"
                                                             class="form-control form-control-sm" value="<?php echo $t['year']; ?>">
                                                     </td>
                                                     <td>
-                                                        <select required name="trainings[<?php echo $t_idx; ?>][level]"
+                                                        <select name="trainings[<?php echo $t_idx; ?>][level]"
                                                             class="form-select form-select-sm">
                                                             <option value="Daerah" <?php echo ($t['level'] == 'Daerah') ? 'selected' : ''; ?>>Daerah</option>
                                                             <option value="Nasional" <?php echo ($t['level'] == 'Nasional') ? 'selected' : ''; ?>>Nasional</option>
                                                             <option value="Internasional" <?php echo ($t['level'] == 'Internasional') ? 'selected' : ''; ?>>Internasional</option>
                                                         </select>
                                                     </td>
-                                                    <td><input required type="text"
+                                                    <td><input type="text"
                                                             name="trainings[<?php echo $t_idx; ?>][description]"
                                                             class="form-control form-control-sm"
                                                             value="<?php echo $t['description']; ?>"></td>
@@ -529,17 +529,17 @@ while ($row = $coaches->fetch_assoc()):
                                         else:
                                             ?>
                                             <tr>
-                                                <td><input required type="number" name="trainings[0][year]"
+                                                <td><input type="number" name="trainings[0][year]"
                                                         class="form-control form-control-sm" placeholder="2024"></td>
                                                 <td>
-                                                    <select required name="trainings[0][level]"
+                                                    <select name="trainings[0][level]"
                                                         class="form-select form-select-sm">
                                                         <option value="Daerah">Daerah</option>
                                                         <option value="Nasional">Nasional</option>
                                                         <option value="Internasional">Internasional</option>
                                                     </select>
                                                 </td>
-                                                <td><input required type="text" name="trainings[0][description]"
+                                                <td><input type="text" name="trainings[0][description]"
                                                         class="form-control form-control-sm" placeholder="Nama Pelatihan...">
                                                 </td>
                                                 <td><input type="file" name="trainings[0][file]"
@@ -588,19 +588,42 @@ while ($row = $coaches->fetch_assoc()):
     }
 
     function validateTrainings(event, form) {
-        const inputs = form.querySelectorAll('input[name^="trainings"], select[name^="trainings"]');
+        const tables = form.querySelectorAll('table[id^="trainingTable"]');
         let isValid = true;
 
-        inputs.forEach(input => {
-            // Skip file inputs and hidden inputs (like existing_file)
-            if (input.type === 'file' || input.type === 'hidden') return;
+        tables.forEach(table => {
+            const tbody = table.querySelector('tbody');
+            if (!tbody) return;
+            const rows = tbody.querySelectorAll('tr');
 
-            if (!input.value.trim()) {
-                isValid = false;
-                input.classList.add('is-invalid');
-            } else {
-                input.classList.remove('is-invalid');
-            }
+            rows.forEach(row => {
+                const yearInput = row.querySelector('input[name*="[year]"]');
+                const descInput = row.querySelector('input[name*="[description]"]');
+
+                if (yearInput && descInput) {
+                    const yearVal = yearInput.value.trim();
+                    const descVal = descInput.value.trim();
+                    
+                    if (yearVal !== '' || descVal !== '') {
+                        if (yearVal === '') {
+                            isValid = false;
+                            yearInput.classList.add('is-invalid');
+                        } else {
+                            yearInput.classList.remove('is-invalid');
+                        }
+
+                        if (descVal === '') {
+                            isValid = false;
+                            descInput.classList.add('is-invalid');
+                        } else {
+                            descInput.classList.remove('is-invalid');
+                        }
+                    } else {
+                        yearInput.classList.remove('is-invalid');
+                        descInput.classList.remove('is-invalid');
+                    }
+                }
+            });
         });
 
         if (!isValid) {
@@ -608,7 +631,7 @@ while ($row = $coaches->fetch_assoc()):
             Swal.fire({
                 icon: 'warning',
                 title: 'Data Tidak Lengkap',
-                text: 'Mohon lengkapi semua kolom data pelatihan (Tahun, Tingkat, & Nama Pelatihan)!',
+                text: 'Jika mengisi pelatihan, mohon lengkapi semua kolom wajib data pelatihan (Tahun & Nama Pelatihan)!',
             });
             return false;
         }
@@ -644,15 +667,15 @@ while ($row = $coaches->fetch_assoc()):
         const idx = Date.now() + Math.floor(Math.random() * 1000);
 
         row.innerHTML = `
-        <td><input required type="number" name="trainings[${idx}][year]" class="form-control form-control-sm" placeholder="2024"></td>
+        <td><input type="number" name="trainings[${idx}][year]" class="form-control form-control-sm" placeholder="2024"></td>
         <td>
-            <select required name="trainings[${idx}][level]" class="form-select form-select-sm">
+            <select name="trainings[${idx}][level]" class="form-select form-select-sm">
                 <option value="Daerah">Daerah</option>
                 <option value="Nasional">Nasional</option>
                 <option value="Internasional">Internasional</option>
             </select>
         </td>
-        <td><input required type="text" name="trainings[${idx}][description]" class="form-control form-control-sm" placeholder="Nama Pelatihan..."></td>
+        <td><input type="text" name="trainings[${idx}][description]" class="form-control form-control-sm" placeholder="Nama Pelatihan..."></td>
         <td><input type="file" name="trainings[${idx}][file]" class="form-control form-control-sm"></td>
         <td><button type="button" class="btn btn-sm btn-danger" onclick="confirmRemoveRow(this)"><i class="bi bi-trash"></i></button></td>
     `;
