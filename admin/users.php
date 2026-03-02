@@ -90,7 +90,7 @@ require_once '../includes/navbar.php';
 // List Users
 // Pagination & Search Logic
 $search = isset($_GET['search']) ? $conn->real_escape_string($_GET['search']) : '';
-$limit = 5;
+$limit = 10;
 $page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
 $offset = ($page - 1) * $limit;
 

@@ -189,7 +189,7 @@ require_once '../includes/navbar.php';
 
 // Pagination & Search Logic
 $search = isset($_GET['search']) ? $conn->real_escape_string($_GET['search']) : '';
-$limit = 5;
+$limit = 10;
 $page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
 $offset = ($page - 1) * $limit;
 
@@ -369,8 +369,7 @@ $coaches = $conn->query("SELECT * FROM coaches $where ORDER BY id DESC LIMIT $li
                                         <td><input type="number" name="trainings[0][year]"
                                                 class="form-control form-control-sm" placeholder="2024"></td>
                                         <td>
-                                            <select name="trainings[0][level]"
-                                                class="form-select form-select-sm">
+                                            <select name="trainings[0][level]" class="form-select form-select-sm">
                                                 <option value="Daerah">Daerah</option>
                                                 <option value="Nasional">Nasional</option>
                                                 <option value="Internasional">Internasional</option>
@@ -503,17 +502,19 @@ while ($row = $coaches->fetch_assoc()):
                                                             <option value="Internasional" <?php echo ($t['level'] == 'Internasional') ? 'selected' : ''; ?>>Internasional</option>
                                                         </select>
                                                     </td>
-                                                    <td><input type="text"
-                                                            name="trainings[<?php echo $t_idx; ?>][description]"
+                                                    <td><input type="text" name="trainings[<?php echo $t_idx; ?>][description]"
                                                             class="form-control form-control-sm"
                                                             value="<?php echo $t['description']; ?>"></td>
                                                     <td>
                                                         <?php if ($t['certificate_file']): ?>
                                                             <div class="d-flex align-items-center gap-2 mb-1">
-                                                                <a href="../assets/uploads/trainings/<?php echo $t['certificate_file']; ?>" target="_blank" class="badge bg-primary text-decoration-none">
+                                                                <a href="../assets/uploads/trainings/<?php echo $t['certificate_file']; ?>"
+                                                                    target="_blank" class="badge bg-primary text-decoration-none">
                                                                     <i class="bi bi-eye"></i> Lihat
                                                                 </a>
-                                                                <input type="hidden" name="trainings[<?php echo $t_idx; ?>][existing_file]" value="<?php echo $t['certificate_file']; ?>">
+                                                                <input type="hidden"
+                                                                    name="trainings[<?php echo $t_idx; ?>][existing_file]"
+                                                                    value="<?php echo $t['certificate_file']; ?>">
                                                             </div>
                                                         <?php endif; ?>
                                                         <input type="file" name="trainings[<?php echo $t_idx; ?>][file]"
@@ -532,8 +533,7 @@ while ($row = $coaches->fetch_assoc()):
                                                 <td><input type="number" name="trainings[0][year]"
                                                         class="form-control form-control-sm" placeholder="2024"></td>
                                                 <td>
-                                                    <select name="trainings[0][level]"
-                                                        class="form-select form-select-sm">
+                                                    <select name="trainings[0][level]" class="form-select form-select-sm">
                                                         <option value="Daerah">Daerah</option>
                                                         <option value="Nasional">Nasional</option>
                                                         <option value="Internasional">Internasional</option>
@@ -603,7 +603,7 @@ while ($row = $coaches->fetch_assoc()):
                 if (yearInput && descInput) {
                     const yearVal = yearInput.value.trim();
                     const descVal = descInput.value.trim();
-                    
+
                     if (yearVal !== '' || descVal !== '') {
                         if (yearVal === '') {
                             isValid = false;

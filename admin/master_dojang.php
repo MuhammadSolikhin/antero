@@ -92,7 +92,7 @@ echo '<style>.select2-container { z-index: 9999; } .select2-container .select2-s
 
 // Pagination & Search Logic
 $search = isset($_GET['search']) ? $conn->real_escape_string($_GET['search']) : '';
-$limit = 5;
+$limit = 10;
 $page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
 $offset = ($page - 1) * $limit;
 

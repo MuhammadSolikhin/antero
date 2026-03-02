@@ -146,7 +146,7 @@ if (isset($_GET['delete'])) {
 // DATA FETCHING
 // Pagination & Search Logic
 $search = isset($_GET['search']) ? $conn->real_escape_string($_GET['search']) : '';
-$limit = 5;
+$limit = 10;
 $page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
 $offset = ($page - 1) * $limit;
 
@@ -218,7 +218,7 @@ require_once '../includes/navbar.php';
                 <tbody>
                     <?php
                     // Calculate starting number
-                    // $limit is 5
+                    // $limit is 10
                     $no = $offset + 1;
                     while ($row = $students->fetch_assoc()): ?>
                         <tr>
