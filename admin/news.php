@@ -135,41 +135,41 @@ $news_list = $conn->query("SELECT * FROM news $where ORDER BY created_at DESC LI
     <?php if (isset($_GET['msg']) && $_GET['msg'] == 'deleted')
         echo "<div class='alert alert-success'>Berita dihapus.</div>"; ?>
 
-    <div class="row g-4">
+    <div class="row row-cols-1 row-cols-md-3 row-cols-lg-5 g-4">
         <?php while ($row = $news_list->fetch_assoc()): ?>
-            <div class="col-md-4">
-                <div class="glass-card h-100 p-0 overflow-hidden shadow-sm">
+            <div class="col">
+                <div class="glass-card h-100 p-0 overflow-hidden shadow-sm d-flex flex-column">
                     <?php if ($row['image']): ?>
                         <img src="../assets/uploads/<?php echo $row['image']; ?>" class="w-100"
-                            style="height: 200px; object-fit: cover;">
+                            style="height: 160px; object-fit: cover;">
                     <?php else: ?>
                         <div class="bg-light w-100 d-flex align-items-center justify-content-center text-muted"
-                            style="height: 200px;">
+                            style="height: 160px;">
                             <i class="bi bi-image fs-1"></i>
                         </div>
                     <?php endif; ?>
 
-                    <div class="p-4">
+                    <div class="p-3 d-flex flex-column flex-grow-1">
                         <small class="text-muted"><i class="bi bi-calendar-event me-1"></i>
                             <?php echo date('d M Y, H:i', strtotime($row['created_at'])); ?></small>
-                        <h5 class="fw-bold mt-2 mb-2 text-truncate"><?php echo $row['title']; ?></h5>
+                        <h6 class="fw-bold mt-2 mb-2 text-truncate" title="<?php echo htmlspecialchars($row['title']); ?>"><?php echo $row['title']; ?></h6>
                         <?php if ($row['source']): ?>
-                            <small class="d-block text-primary mb-3"><i class="bi bi-link-45deg"></i>
+                            <small class="d-block text-primary mb-3 text-truncate" title="<?php echo htmlspecialchars($row['source']); ?>"><i class="bi bi-link-45deg"></i>
                                 <?php echo $row['source']; ?></small>
                         <?php endif; ?>
-                        <p class="text-muted small mb-4"
-                            style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
+                        <p class="text-muted small mb-3"
+                            style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4;">
                             <?php echo strip_tags($row['content']); ?>
                         </p>
 
-                        <div class="d-flex justify-content-between">
-                            <button class="btn btn-sm btn-outline-warning rounded-pill" data-bs-toggle="modal"
+                        <div class="d-flex gap-2 mt-auto">
+                            <button class="btn btn-sm btn-outline-warning flex-fill" data-bs-toggle="modal"
                                 data-bs-target="#editNewsModal<?php echo $row['id']; ?>">
                                 <i class="bi bi-pencil-square"></i> Edit
                             </button>
                             <a href="news.php?delete=<?php echo $row['id']; ?>"
-                                class="btn btn-sm btn-outline-danger rounded-pill"
-                                onclick="return confirm('Hapus berita ini?')">
+                                class="btn btn-sm btn-outline-danger flex-fill"
+                                onclick="confirmDelete(event, 'news.php?delete=<?php echo $row['id']; ?>')">
                                 <i class="bi bi-trash"></i> Hapus
                             </a>
                         </div>

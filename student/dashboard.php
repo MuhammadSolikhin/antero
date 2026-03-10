@@ -98,38 +98,53 @@ if ($flyer && !isset($_SESSION['flyer_seen'])) {
     <!-- ... (rest of stats) ... -->
 
     <!-- News Section -->
-    <div class="row mt-5">
-        <div class="col-12 mb-4">
-            <div class="glass-card p-3 d-inline-block">
-                <h4 class="fw-bold m-0"><i class="bi bi-megaphone-fill text-primary me-2"></i> Pengumuman & Berita</h4>
+    <div class="row mt-5 mb-4">
+        <div class="col-12">
+            <div class="glass-card p-4 d-flex align-items-center shadow-sm">
+                <div class="bg-primary bg-opacity-10 p-3 rounded-circle me-3 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                    <i class="bi bi-megaphone-fill fs-4 text-primary"></i>
+                </div>
+                <div>
+                    <h4 class="fw-bold m-0">Pengumuman & Berita</h4>
+                    <small class="text-muted d-block mt-1">Informasi dan update terbaru seputar aktivitas Antero Taekwondo Club</small>
+                </div>
             </div>
         </div>
+    </div>
+
+    <div class="row row-cols-1 row-cols-md-3 row-cols-lg-5 g-4">
 
         <?php
-        $news = $conn->query("SELECT * FROM news ORDER BY created_at DESC LIMIT 3");
+        $news = $conn->query("SELECT * FROM news ORDER BY created_at DESC LIMIT 5");
         if ($news->num_rows > 0):
             while ($n = $news->fetch_assoc()):
                 ?>
-                <div class="col-md-4 mb-4">
-                    <div class="glass-card h-100 p-0 overflow-hidden shadow-sm hover-shadow transition-all bg-white">
+                <div class="col">
+                    <div class="glass-card h-100 p-0 overflow-hidden shadow-sm hover-shadow transition-all bg-white d-flex flex-column">
                         <?php if ($n['image']): ?>
-                            <div style="height: 200px; overflow: hidden;">
+                            <div style="height: 160px; overflow: hidden;">
                                 <img src="../assets/uploads/<?php echo $n['image']; ?>" class="w-100 h-100 object-fit-cover">
                             </div>
+                        <?php else: ?>
+                            <div class="bg-light w-100 d-flex align-items-center justify-content-center text-muted" style="height: 160px;">
+                                <i class="bi bi-image fs-1"></i>
+                            </div>
                         <?php endif; ?>
-                        <div class="p-4">
+                        <div class="p-3 d-flex flex-column flex-grow-1">
                             <small class="text-muted"><i class="bi bi-calendar-event me-1"></i>
                                 <?php echo date('d M Y', strtotime($n['created_at'])); ?></small>
-                            <h5 class="fw-bold mt-2 mb-2"><?php echo $n['title']; ?></h5>
+                            <h6 class="fw-bold mt-2 mb-2 text-truncate" title="<?php echo htmlspecialchars($n['title']); ?>"><?php echo $n['title']; ?></h6>
                             <?php if ($n['source']): ?>
-                                <small class="d-block text-primary mb-3"><i class="bi bi-link-45deg"></i>
+                                <small class="d-block text-primary mb-3 text-truncate" title="<?php echo htmlspecialchars($n['source']); ?>"><i class="bi bi-link-45deg"></i>
                                     <?php echo $n['source']; ?></small>
                             <?php endif; ?>
-                            <p class="text-muted small mb-3">
-                                <?php echo substr(strip_tags($n['content']), 0, 100) . '...'; ?>
+                            <p class="text-muted small mb-3" style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4;">
+                                <?php echo strip_tags($n['content']); ?>
                             </p>
-                            <button class="btn btn-sm btn-outline-primary rounded-pill stretched-link" data-bs-toggle="modal"
-                                data-bs-target="#newsModal<?php echo $n['id']; ?>">Baca Selengkapnya</button>
+                            <div class="mt-auto">
+                                <button class="btn btn-sm btn-outline-primary rounded-pill stretched-link w-100" data-bs-toggle="modal"
+                                    data-bs-target="#newsModal<?php echo $n['id']; ?>">Baca Selengkapnya</button>
+                            </div>
                         </div>
                     </div>
                 </div>
