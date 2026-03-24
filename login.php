@@ -3,6 +3,8 @@ session_start();
 if (isset($_SESSION['user_id'])) {
     if ($_SESSION['role'] == 'admin') {
         header("Location: admin/dashboard.php");
+    } elseif ($_SESSION['role'] == 'pelatih') {
+        header("Location: coach/dashboard.php");
     } else {
         header("Location: student/dashboard.php");
     }
@@ -65,6 +67,8 @@ if (isset($_SESSION['user_id'])) {
                     <div class="mt-4">
                         <p class="mb-0">Belum punya akun? <a href="register.php"
                                 class="text-primary text-decoration-none fw-bold">Daftar Siswa</a></p>
+                        <p class="mb-0 mt-2">Daftar sebagai pelatih? <a href="register_coach.php"
+                                class="text-success text-decoration-none fw-bold">Daftar Pelatih</a></p>
                     </div>
                 </div>
             </div>

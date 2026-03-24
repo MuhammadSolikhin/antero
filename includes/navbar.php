@@ -17,9 +17,29 @@ if (isset($_SESSION['user_id'])) {
     // Fetch Profile Picture
     require_once __DIR__ . '/../config/database.php'; // Ensure DB
     $uid = $_SESSION['user_id'];
-    $u_query = $conn->query("SELECT foto_profil FROM users WHERE id=$uid");
-    $u_data = $u_query ? $u_query->fetch_assoc() : null;
-    $prof_pic = ($u_data && $u_data['foto_profil']) ? BASE_URL . "assets/uploads/profiles/" . $u_data['foto_profil'] : "https://ui-avatars.com/api/?name=" . $_SESSION['username'] . "&background=random";
+    
+    $prof_pic = "https://ui-avatars.com/api/?name=" . $_SESSION['username'] . "&background=random";
+    
+    if ($role == 'pelatih') {
+        $c_query = $conn->query("SELECT foto_pelatih FROM coaches WHERE user_id=$uid");
+        $c_data = $c_query ? $c_query->fetch_assoc() : null;
+        if ($c_data && !empty($c_data['foto_pelatih'])) {
+            $prof_pic = BASE_URL . "assets/uploads/" . $c_data['foto_pelatih'];
+        } else {
+            // fallback to users table just in case
+            $u_query = $conn->query("SELECT foto_profil FROM users WHERE id=$uid");
+            $u_data = $u_query ? $u_query->fetch_assoc() : null;
+            if ($u_data && !empty($u_data['foto_profil'])) {
+                $prof_pic = BASE_URL . "assets/uploads/profiles/" . $u_data['foto_profil'];
+            }
+        }
+    } else {
+        $u_query = $conn->query("SELECT foto_profil FROM users WHERE id=$uid");
+        $u_data = $u_query ? $u_query->fetch_assoc() : null;
+        if ($u_data && !empty($u_data['foto_profil'])) {
+            $prof_pic = BASE_URL . "assets/uploads/profiles/" . $u_data['foto_profil'];
+        }
+    }
     ?>
     <div class="d-flex" id="wrapper">
         <!-- Sidebar -->
@@ -90,13 +110,32 @@ if (isset($_SESSION['user_id'])) {
                     </a>
                     <a href="<?= BASE_URL ?>admin/club_settings.php"
                         class="list-group-item list-group-item-action <?php echo isActive('club_settings.php'); ?>">
-                        <i class="bi bi-gear-fill"></i> Pengaturan Sosmed
+                        <i class="bi bi-gear-fill"></i> Pengaturan Aplikasi
                     </a>
 
                     <small class="text-uppercase text-muted px-4 mt-3 mb-2 fw-bold" style="font-size:0.75rem;">Laporan</small>
                     <a href="<?= BASE_URL ?>admin/reports.php"
                         class="list-group-item list-group-item-action <?php echo isActive('reports.php'); ?>">
                         <i class="bi bi-file-earmark-bar-graph"></i> Laporan
+                    </a>
+
+                <?php elseif ($role == 'pelatih'): // Coach ?>
+                    <small class="text-uppercase text-muted px-4 mb-2 fw-bold" style="font-size:0.75rem;">Menu Pelatih</small>
+                    <a href="<?= BASE_URL ?>coach/dashboard.php"
+                        class="list-group-item list-group-item-action <?php echo isActive('dashboard.php'); ?>">
+                        <i class="bi bi-house-door-fill"></i> Dashboard
+                    </a>
+                    <a href="<?= BASE_URL ?>coach/trainings.php"
+                        class="list-group-item list-group-item-action <?php echo isActive('trainings.php'); ?>">
+                        <i class="bi bi-journal-bookmark-fill"></i> Riwayat Pelatihan
+                    </a>
+                    <a href="<?= BASE_URL ?>coach/my_dojang.php"
+                        class="list-group-item list-group-item-action <?php echo isActive('my_dojang.php'); ?>">
+                        <i class="bi bi-people-fill"></i> Dojang Saya
+                    </a>
+                    <a href="<?= BASE_URL ?>coach/students_list.php"
+                        class="list-group-item list-group-item-action <?php echo isActive('students_list.php'); ?>">
+                        <i class="bi bi-list-ul"></i> Data Seluruh Siswa
                     </a>
 
                 <?php else: // Student ?>
@@ -161,6 +200,9 @@ if (isset($_SESSION['user_id'])) {
                                     aria-labelledby="navbarDropdown">
                                     <?php if ($role == 'admin'): ?>
                                         <li><a class="dropdown-item" href="<?= BASE_URL ?>admin/profile.php"><i
+                                                    class="bi bi-person me-2"></i> Profile Saya</a></li>
+                                    <?php elseif ($role == 'pelatih'): ?>
+                                        <li><a class="dropdown-item" href="<?= BASE_URL ?>coach/profile.php"><i
                                                     class="bi bi-person me-2"></i> Profile Saya</a></li>
                                     <?php elseif ($role == 'siswa'): ?>
                                         <li><a class="dropdown-item" href="<?= BASE_URL ?>student/biodata.php"><i

@@ -24,6 +24,23 @@ if (session_status() == PHP_SESSION_NONE) {
     <!-- Custom CSS -->
     <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/style.css">
 
+    <?php 
+    // Fetch background image
+    $bg_query = $conn->query("SELECT background_image FROM club_info WHERE id = 1");
+    if ($bg_query) {
+        $bg_data = $bg_query->fetch_assoc();
+        if (!empty($bg_data['background_image'])) {
+            $bg_url = BASE_URL . 'assets/uploads/system/' . $bg_data['background_image'];
+            echo "<style>
+            body {
+                background: url('{$bg_url}') no-repeat center center fixed !important;
+                background-size: cover !important;
+            }
+            </style>";
+        }
+    }
+    ?>
+
 
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

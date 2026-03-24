@@ -23,6 +23,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_user'])) {
     } else {
         $sql = "INSERT INTO users (username, email, password, role) VALUES ('$username', '$email', '$password', '$role')";
         if ($conn->query($sql)) {
+            $new_user_id = $conn->insert_id;
+            
+            // Link to coach profile if role is pelatih
+            if ($role === 'pelatih' && isset($_POST['coach_id']) && !empty($_POST['coach_id'])) {
+                $coach_id = intval($_POST['coach_id']);
+                $conn->query("UPDATE coaches SET user_id = $new_user_id WHERE id = $coach_id");
+            }
+
             $_SESSION['swal_icon'] = 'success';
             $_SESSION['swal_title'] = 'Berhasil!';
             $_SESSION['swal_text'] = 'User berhasil ditambahkan!';
@@ -58,6 +66,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_user'])) {
             $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
             $conn->query("UPDATE users SET password='$password' WHERE id=$id");
         }
+
+        // Link to coach profile if role is pelatih
+        if ($role === 'pelatih') {
+            // First unlink any previous coach link for this user
+            $conn->query("UPDATE coaches SET user_id = NULL WHERE user_id = $id");
+            if (isset($_POST['coach_id']) && !empty($_POST['coach_id'])) {
+                $coach_id = intval($_POST['coach_id']);
+                $conn->query("UPDATE coaches SET user_id = $id WHERE id = $coach_id");
+            }
+        }
+
         $_SESSION['swal_icon'] = 'success';
         $_SESSION['swal_title'] = 'Berhasil!';
         $_SESSION['swal_text'] = 'User berhasil diupdate!';
@@ -149,6 +168,8 @@ $users = $conn->query("SELECT * FROM users $where ORDER BY role ASC, username AS
                             <td>
                                 <?php if ($u['role'] == 'admin'): ?>
                                     <span class="badge bg-danger">ADMIN</span>
+                                <?php elseif ($u['role'] == 'pelatih'): ?>
+                                    <span class="badge bg-success">PELATIH</span>
                                 <?php else: ?>
                                     <span class="badge bg-primary">SISWA</span>
                                 <?php endif; ?>
@@ -231,10 +252,32 @@ while ($u = $users->fetch_assoc()):
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Role</label>
-                            <select name="role" class="form-select" required>
+                            <select name="role" class="form-select user-role-select" required>
                                 <option value="siswa" <?php echo ($u['role'] == 'siswa') ? 'selected' : ''; ?>>Siswa</option>
+                                <option value="pelatih" <?php echo ($u['role'] == 'pelatih') ? 'selected' : ''; ?>>Pelatih</option>
                                 <option value="admin" <?php echo ($u['role'] == 'admin') ? 'selected' : ''; ?>>Admin</option>
                             </select>
+                        </div>
+                        <div class="mb-3 coach-select-group" style="<?php echo ($u['role'] == 'pelatih') ? '' : 'display: none;'; ?>">
+                            <label class="form-label">Hubungkan dengan Profil Pelatih</label>
+                            <select name="coach_id" class="form-select">
+                                <option value="">-- Pilih Profil Pelatih --</option>
+                                <?php
+                                // Get current linked coach
+                                $current_coach_id = null;
+                                $linked_coach = $conn->query("SELECT id FROM coaches WHERE user_id = " . $u['id']);
+                                if ($linked_coach->num_rows > 0) {
+                                    $current_coach_id = $linked_coach->fetch_assoc()['id'];
+                                }
+                                
+                                $coaches_list = $conn->query("SELECT id, nama_pelatih FROM coaches ORDER BY nama_pelatih ASC");
+                                while ($c = $coaches_list->fetch_assoc()): 
+                                    $selected = ($c['id'] == $current_coach_id) ? 'selected' : '';
+                                ?>
+                                    <option value="<?php echo $c['id']; ?>" <?php echo $selected; ?>><?php echo $c['nama_pelatih']; ?></option>
+                                <?php endwhile; ?>
+                            </select>
+                            <small class="text-muted">Pilih profil pelatih agar akun ini punya akses dashboard pelatih.</small>
                         </div>
                         <div class="mb-3">
                             <label class="form-label text-muted small">New Password (Kosongkan jika tidak ubah)</label>
@@ -271,10 +314,23 @@ while ($u = $users->fetch_assoc()):
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Role</label>
-                        <select name="role" class="form-select" required>
+                        <select name="role" class="form-select user-role-select" required>
                             <option value="siswa">Siswa</option>
+                            <option value="pelatih">Pelatih</option>
                             <option value="admin">Admin</option>
                         </select>
+                    </div>
+                    <div class="mb-3 coach-select-group" style="display: none;">
+                        <label class="form-label">Hubungkan dengan Profil Pelatih</label>
+                        <select name="coach_id" class="form-select">
+                            <option value="">-- Pilih Profil Pelatih --</option>
+                            <?php
+                            $coaches_list = $conn->query("SELECT id, nama_pelatih FROM coaches ORDER BY nama_pelatih ASC");
+                            while ($c = $coaches_list->fetch_assoc()): ?>
+                                <option value="<?php echo $c['id']; ?>"><?php echo $c['nama_pelatih']; ?></option>
+                            <?php endwhile; ?>
+                        </select>
+                        <small class="text-muted">Pilih profil pelatih agar akun ini punya akses dashboard pelatih.</small>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Password</label>
@@ -293,6 +349,26 @@ while ($u = $users->fetch_assoc()):
 <?php require_once '../includes/footer.php'; ?>
 
 <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Toggle coach select group based on role selection
+        const roleSelects = document.querySelectorAll('.user-role-select');
+        roleSelects.forEach(select => {
+            select.addEventListener('change', function() {
+                const modal = this.closest('.modal-content');
+                const coachGroup = modal.querySelector('.coach-select-group');
+                if (coachGroup) {
+                    if (this.value === 'pelatih') {
+                        coachGroup.style.display = 'block';
+                        coachGroup.querySelector('select').setAttribute('required', 'required');
+                    } else {
+                        coachGroup.style.display = 'none';
+                        coachGroup.querySelector('select').removeAttribute('required');
+                    }
+                }
+            });
+        });
+    });
+
     function confirmDelete(event, url) {
         event.preventDefault();
         Swal.fire({

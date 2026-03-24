@@ -24,6 +24,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             // Redirect based on role
             if ($row['role'] == 'admin') {
                 header("Location: ../admin/dashboard.php");
+            } elseif ($row['role'] == 'pelatih') {
+                header("Location: ../coach/dashboard.php");
             } else {
                 header("Location: ../student/dashboard.php");
             }
