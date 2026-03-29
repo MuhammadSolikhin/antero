@@ -23,7 +23,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         // Note: Students data will be filled in dashboard
 
-        $_SESSION['success'] = "Pendaftaran berhasil, silakan login!";
+        $_SESSION['swal_icon'] = 'success';
+        $_SESSION['swal_title'] = 'Pendaftaran Berhasil!';
+        $_SESSION['swal_text'] = 'Silakan login dengan akun yang baru dibuat.';
         header("Location: ../login.php");
     } else {
         $_SESSION['error'] = "Error: " . $conn->error;

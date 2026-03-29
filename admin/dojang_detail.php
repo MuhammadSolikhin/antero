@@ -43,6 +43,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_student'])) {
     $ttl_date = $_POST['tanggal_lahir'];
     $sabuk = $_POST['tingkatan_sabuk'];
     $alamat = $_POST['alamat_domisili'];
+    $tinggi = isset($_POST['tinggi_badan']) && $_POST['tinggi_badan'] !== '' ? floatval($_POST['tinggi_badan']) : 'NULL';
+    $berat = isset($_POST['berat_badan']) && $_POST['berat_badan'] !== '' ? floatval($_POST['berat_badan']) : 'NULL';
 
     // Auto-create User
     $username = generateUsername($nama);
@@ -75,8 +77,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_student'])) {
         $conn->query("INSERT INTO users (username, password, role) VALUES ('$username', '$password', '$role')");
         $user_id = $conn->insert_id;
 
-        $sql = "INSERT INTO students (user_id, dojang_id, nama_lengkap, tempat_lahir, tanggal_lahir, tingkatan_sabuk, foto_sertifikat, alamat_domisili) 
-                VALUES ($user_id, $id_dojang, '$nama', '$ttl_place', '$ttl_date', '$sabuk', '$file_name', '$alamat')";
+        $sql = "INSERT INTO students (user_id, dojang_id, nama_lengkap, tempat_lahir, tanggal_lahir, tingkatan_sabuk, foto_sertifikat, alamat_domisili, tinggi_badan, berat_badan) 
+                VALUES ($user_id, $id_dojang, '$nama', '$ttl_place', '$ttl_date', '$sabuk', '$file_name', '$alamat', $tinggi, $berat)";
         $conn->query($sql);
         $student_id = $conn->insert_id;
 
@@ -106,6 +108,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_student'])) {
     $sabuk = $_POST['tingkatan_sabuk'];
     $alamat = $_POST['alamat_domisili'];
     $status = $_POST['status']; // Added status
+    $tinggi = isset($_POST['tinggi_badan']) && $_POST['tinggi_badan'] !== '' ? floatval($_POST['tinggi_badan']) : 'NULL';
+    $berat = isset($_POST['berat_badan']) && $_POST['berat_badan'] !== '' ? floatval($_POST['berat_badan']) : 'NULL';
 
     // Check old data for belt and dojang comparison
     $old_data = $conn->query("SELECT tingkatan_sabuk, dojang_id FROM students WHERE id=$id_student")->fetch_assoc();
@@ -138,7 +142,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_student'])) {
             tingkatan_sabuk='$sabuk', 
             alamat_domisili='$alamat', 
             dojang_id='$new_dojang_id',
-            status='$status' 
+            status='$status',
+            tinggi_badan=$tinggi,
+            berat_badan=$berat 
             $file_update_sql
             WHERE id=$id_student";
 
@@ -360,6 +366,16 @@ $students = $conn->query("SELECT s.*, u.username FROM students s JOIN users u ON
                         <label class="form-label">Alamat Domisili</label>
                         <textarea name="alamat_domisili" class="form-control" rows="2" required></textarea>
                     </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Tinggi Badan (cm)</label>
+                            <input type="number" name="tinggi_badan" class="form-control" step="0.1" min="0" max="300" placeholder="Contoh: 165.5">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Berat Badan (kg)</label>
+                            <input type="number" name="berat_badan" class="form-control" step="0.1" min="0" max="500" placeholder="Contoh: 55.0">
+                        </div>
+                    </div>
                     <div class="mb-3">
                         <label class="form-label">Status Keanggotaan</label>
                         <select name="status" class="form-select" required>
@@ -574,6 +590,16 @@ while ($row = $students->fetch_assoc()):
                                 <label class="form-label fw-bold small text-muted">Alamat Domisili</label>
                                 <textarea name="alamat_domisili" class="form-control" rows="2"
                                     required><?php echo $row['alamat_domisili']; ?></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted">Tinggi Badan (cm)</label>
+                                <input type="number" name="tinggi_badan" class="form-control" step="0.1" min="0" max="300"
+                                    value="<?php echo $row['tinggi_badan'] ?? ''; ?>" placeholder="Contoh: 165.5">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted">Berat Badan (kg)</label>
+                                <input type="number" name="berat_badan" class="form-control" step="0.1" min="0" max="500"
+                                    value="<?php echo $row['berat_badan'] ?? ''; ?>" placeholder="Contoh: 55.0">
                             </div>
                         </div>
                     </div>

@@ -19,6 +19,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $sabuk = $_POST['tingkatan_sabuk'];
     $alamat = $_POST['alamat_domisili'];
     $email = $conn->real_escape_string($_POST['email']);
+    $tinggi = isset($_POST['tinggi_badan']) && $_POST['tinggi_badan'] !== '' ? floatval($_POST['tinggi_badan']) : 'NULL';
+    $berat = isset($_POST['berat_badan']) && $_POST['berat_badan'] !== '' ? floatval($_POST['berat_badan']) : 'NULL';
 
     // Check if update or insert
     $check = $conn->query("SELECT id, tingkatan_sabuk, dojang_id FROM students WHERE user_id = $user_id");
@@ -42,15 +44,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         // Base SQL for update
         $sql = "UPDATE students SET 
                 nama_lengkap='$nama', tempat_lahir='$ttl_place', tanggal_lahir='$ttl_date', 
-                dojang_id='$dojang', tingkatan_sabuk='$sabuk', alamat_domisili='$alamat' 
+                dojang_id='$dojang', tingkatan_sabuk='$sabuk', alamat_domisili='$alamat',
+                tinggi_badan=$tinggi, berat_badan=$berat 
                 WHERE user_id=$user_id";
     } else {
         // Insert new student
         $is_new_student = true;
         $is_belt_changed = true; // New student needs belt history
         $current_dojang_id = 0; // New student has no history
-        $sql = "INSERT INTO students (user_id, dojang_id, nama_lengkap, tempat_lahir, tanggal_lahir, tingkatan_sabuk, alamat_domisili) 
-                VALUES ($user_id, '$dojang', '$nama', '$ttl_place', '$ttl_date', '$sabuk', '$alamat')";
+        $sql = "INSERT INTO students (user_id, dojang_id, nama_lengkap, tempat_lahir, tanggal_lahir, tingkatan_sabuk, alamat_domisili, tinggi_badan, berat_badan) 
+                VALUES ($user_id, '$dojang', '$nama', '$ttl_place', '$ttl_date', '$sabuk', '$alamat', $tinggi, $berat)";
     }
 
     // Update Email in users table
@@ -194,7 +197,7 @@ $data = $conn->query("SELECT s.*, d.nama_dojang, u.email
                     <div class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0">
                         <span class="text-muted"><i class="bi bi-calendar-event me-2"></i> Tanggal Lahir</span>
                         <span
-                            class="fw-semibold"><?= $data['tanggal_lahir'] ? date('d F Y', strtotime($data['tanggal_lahir'])) : '-' ?></span>
+                            class="fw-semibold"><?= isset($data['tanggal_lahir']) && $data['tanggal_lahir'] ? date('d F Y', strtotime($data['tanggal_lahir'])) : '-' ?></span>
                     </div>
                     <div class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0">
                         <span class="text-muted"><i class="bi bi-house-door me-2"></i> Asal Dojang</span>
@@ -206,6 +209,14 @@ $data = $conn->query("SELECT s.*, d.nama_dojang, u.email
                     <div class="list-group-item bg-transparent px-0">
                         <span class="text-muted d-block mb-1"><i class="bi bi-map me-2"></i> Alamat Domisili</span>
                         <p class="mb-0 small text-break"><?= $data['alamat_domisili'] ?? '-' ?></p>
+                    </div>
+                    <div class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0">
+                        <span class="text-muted"><i class="bi bi-rulers me-2"></i> Tinggi Badan</span>
+                        <span class="fw-semibold"><?= isset($data['tinggi_badan']) && $data['tinggi_badan'] ? $data['tinggi_badan'] . ' cm' : '-' ?></span>
+                    </div>
+                    <div class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0">
+                        <span class="text-muted"><i class="bi bi-speedometer me-2"></i> Berat Badan</span>
+                        <span class="fw-semibold"><?= isset($data['berat_badan']) && $data['berat_badan'] ? $data['berat_badan'] . ' kg' : '-' ?></span>
                     </div>
                 </div>
 
@@ -266,6 +277,75 @@ $data = $conn->query("SELECT s.*, d.nama_dojang, u.email
                     </table>
                  </div>
              </div>
+        </div>
+    </div>
+
+    <!-- Belt History Row -->
+    <div class="row justify-content-center">
+        <div class="col-md-10 mb-4">
+            <div class="glass-card p-4 animate__animated animate__fadeInUp" style="animation-delay: 0.2s;">
+                <h5 class="fw-bold mb-4"><i class="bi bi-award text-warning"></i> Riwayat Kenaikan Sabuk</h5>
+                
+                <div class="table-responsive">
+                    <table class="table table-borderless table-striped small align-middle">
+                        <thead class="table-light rounded-3">
+                            <tr>
+                                <th>No</th>
+                                <th>Tingkatan Sabuk</th>
+                                <th>Tanggal Update</th>
+                                <th class="text-center">Bukti Sertifikat</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php
+                            if (isset($data['id'])) {
+                                $belt_hist = $conn->query("SELECT * FROM student_belt_history WHERE student_id = " . $data['id'] . " ORDER BY created_at DESC");
+
+                                if ($belt_hist && $belt_hist->num_rows > 0):
+                                    $no_belt = 1;
+                                    while ($bh = $belt_hist->fetch_assoc()):
+                            ?>
+                            <tr>
+                                <td><?php echo $no_belt++; ?></td>
+                                <td><span class="badge bg-info text-dark"><?php echo $bh['tingkatan_sabuk']; ?></span></td>
+                                <td><?php echo date('d/m/Y H:i', strtotime($bh['created_at'])); ?></td>
+                                <td class="text-center">
+                                    <?php if ($bh['foto_sertifikat']): ?>
+                                        <?php 
+                                        $cert_path = "../assets/uploads/certificates/" . $bh['foto_sertifikat'];
+                                        $file_ext = strtolower(pathinfo($bh['foto_sertifikat'], PATHINFO_EXTENSION));
+                                        ?>
+                                        <?php if (in_array($file_ext, ['jpg', 'jpeg', 'png', 'gif'])): ?>
+                                            <a href="<?php echo $cert_path; ?>" target="_blank" class="btn btn-sm btn-outline-success py-0 px-2 rounded-pill">
+                                                <i class="bi bi-image"></i> Lihat
+                                            </a>
+                                        <?php else: ?>
+                                            <a href="<?php echo $cert_path; ?>" target="_blank" class="btn btn-sm btn-outline-danger py-0 px-2 rounded-pill">
+                                                <i class="bi bi-file-earmark-pdf"></i> Lihat
+                                            </a>
+                                        <?php endif; ?>
+                                    <?php else: ?>
+                                        <span class="text-muted">-</span>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                            <?php 
+                                    endwhile;
+                                else:
+                            ?>
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-4">Belum ada riwayat kenaikan sabuk.</td>
+                            </tr>
+                            <?php 
+                                endif;
+                            } else {
+                                echo '<tr><td colspan="4" class="text-center text-muted">Data siswa belum lengkap.</td></tr>';
+                            }
+                            ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -369,6 +449,18 @@ $data = $conn->query("SELECT s.*, d.nama_dojang, u.email
                                 ganti sabuk, Kecuali Sabuk Putih)</span></label>
                         <input type="file" name="bukti_sabuk" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
                         <div class="form-text">Upload sertifikat baru jika Anda mengubah tingkatan sabuk.</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Tinggi Badan (cm)</label>
+                            <input type="number" name="tinggi_badan" class="form-control" step="0.1" min="0" max="300"
+                                value="<?php echo $data['tinggi_badan'] ?? ''; ?>" placeholder="Contoh: 165.5">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Berat Badan (kg)</label>
+                            <input type="number" name="berat_badan" class="form-control" step="0.1" min="0" max="500"
+                                value="<?php echo $data['berat_badan'] ?? ''; ?>" placeholder="Contoh: 55.0">
+                        </div>
                     </div>
                     <div class="mb-4">
                         <label class="form-label">Alamat Domisili</label>

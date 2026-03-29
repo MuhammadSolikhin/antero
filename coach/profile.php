@@ -129,8 +129,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_profile'])) {
     if ($coach) {
         $nama = $conn->real_escape_string($_POST['nama_pelatih']);
         $tingkatan = $conn->real_escape_string($_POST['tingkatan']);
+        $tinggi = isset($_POST['tinggi_badan']) && $_POST['tinggi_badan'] !== '' ? floatval($_POST['tinggi_badan']) : 'NULL';
+        $berat = isset($_POST['berat_badan']) && $_POST['berat_badan'] !== '' ? floatval($_POST['berat_badan']) : 'NULL';
         $coach_id = $coach['id'];
-        $conn->query("UPDATE coaches SET nama_pelatih='$nama', tingkatan='$tingkatan' WHERE id=$coach_id");
+        $conn->query("UPDATE coaches SET nama_pelatih='$nama', tingkatan='$tingkatan', tinggi_badan=$tinggi, berat_badan=$berat WHERE id=$coach_id");
     }
     
     $_SESSION['swal_icon'] = 'success';
@@ -222,6 +224,14 @@ require_once '../includes/navbar.php';
                         </div>
                         <small class="text-muted" style="font-size: 0.70rem;">Format: PDF, JPG, PNG.</small>
                     </form>
+                    
+                    <hr>
+
+                    <label class="form-label text-muted small fw-bold">TINGGI BADAN</label>
+                    <p class="fw-bold"><?php echo ($coach['tinggi_badan'] ?? null) ? htmlspecialchars($coach['tinggi_badan']) . ' cm' : '<span class="text-muted fw-normal">Belum diisi</span>'; ?></p>
+
+                    <label class="form-label text-muted small fw-bold">BERAT BADAN</label>
+                    <p class="fw-bold mb-0"><?php echo ($coach['berat_badan'] ?? null) ? htmlspecialchars($coach['berat_badan']) . ' kg' : '<span class="text-muted fw-normal">Belum diisi</span>'; ?></p>
                     <?php endif; ?>
                 </div>
             </div>
@@ -281,6 +291,18 @@ require_once '../includes/navbar.php';
                     <div class="mb-3 text-start">
                         <label class="form-label">Tingkatan Sabuk</label>
                         <input type="text" name="tingkatan" class="form-control" value="<?php echo htmlspecialchars($coach['tingkatan']); ?>" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3 text-start">
+                            <label class="form-label">Tinggi Badan (cm)</label>
+                            <input type="number" name="tinggi_badan" class="form-control" step="0.1" min="0" max="300"
+                                value="<?php echo htmlspecialchars($coach['tinggi_badan'] ?? ''); ?>" placeholder="Contoh: 170.0">
+                        </div>
+                        <div class="col-md-6 mb-3 text-start">
+                            <label class="form-label">Berat Badan (kg)</label>
+                            <input type="number" name="berat_badan" class="form-control" step="0.1" min="0" max="500"
+                                value="<?php echo htmlspecialchars($coach['berat_badan'] ?? ''); ?>" placeholder="Contoh: 65.0">
+                        </div>
                     </div>
                     <?php endif; ?>
                 </div>

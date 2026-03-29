@@ -87,6 +87,10 @@ if (isset($_SESSION['user_id'])) {
                         class="list-group-item list-group-item-action <?php echo isActive('achievements.php'); ?>">
                         <i class="bi bi-trophy-fill"></i> Data Prestasi
                     </a>
+                    <a href="<?= BASE_URL ?>admin/coach_achievements.php"
+                        class="list-group-item list-group-item-action <?php echo isActive('coach_achievements.php'); ?>">
+                        <i class="bi bi-trophy"></i> Prestasi Pelatih
+                    </a>
 
                     <small class="text-uppercase text-muted px-4 mt-3 mb-2 fw-bold" style="font-size:0.75rem;">Master
                         Data</small>
@@ -128,6 +132,10 @@ if (isset($_SESSION['user_id'])) {
                     <a href="<?= BASE_URL ?>coach/trainings.php"
                         class="list-group-item list-group-item-action <?php echo isActive('trainings.php'); ?>">
                         <i class="bi bi-journal-bookmark-fill"></i> Riwayat Pelatihan
+                    </a>
+                    <a href="<?= BASE_URL ?>coach/achievement.php"
+                        class="list-group-item list-group-item-action <?php echo isActive('achievement.php'); ?>">
+                        <i class="bi bi-trophy-fill"></i> Prestasi
                     </a>
                     <a href="<?= BASE_URL ?>coach/my_dojang.php"
                         class="list-group-item list-group-item-action <?php echo isActive('my_dojang.php'); ?>">
